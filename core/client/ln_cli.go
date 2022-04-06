@@ -15,7 +15,7 @@ var (
 	AppName        = ""
 	InstanceName   = ""
 	ServerAddress  = ""
-	BundleInterval = 5 * time.Minute
+	BundleInterval = 3 * time.Minute
 	BundleSize     = 65536
 )
 
@@ -93,7 +93,7 @@ func (c *Client) Write(d []byte) (n int, err error) {
 	length := len(d)
 	data := make([]byte, length)
 	copy(data, d)
-	c.ch <- d
+	c.ch <- data
 	return length, nil
 }
 
