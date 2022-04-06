@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+option go_package = "./pb";
+
+package logy;
+
+// protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative pb/logy.proto
+
+service Logy {
+    rpc SubmitLogs (stream Logs) returns (EmptyResponse) {}
+}
+
+message Logs {
+    // We use APP_COMPONENT_INSTANCE(IP) as the identifier for a log producer.
+    // The identifier is to be used as the name of the table in db.
+    // e.g. RPD_MAIN_I0_LOCAL, SWIRL_SEAL_I0_LOCAL, RIPPLE_MAIN_FANTOM0_1.22.333.4.
+    // APP -> the name of the application.
+    // COMPONENT -> the name of the component or use 'MAIN' if it covers the whole 
+    // application.
+    // INSTANCE -> use 'Ik' where k indicates it's the kth instance running on the same 
+    // machine; 'I' can be replaced by more meaningful names like chain names.
+    // SUBMIT_TYPE -> 0 means a normal submission; 1 means a submission with an emergent
+    // event to be handled.
+    string app = 1;
+    string component = 2;
+    string instance = 3;
+    int32 submit_type = 4;
+    repeated bytes logs = 5;
+}
+
+message EmptyResponse {}
