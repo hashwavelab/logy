@@ -47,7 +47,7 @@ func NewClient(compName string) *Client {
 		localLogger: &lumberjack.Logger{
 			Filename:   "logs/local.log",
 			MaxSize:    10, // megabytes
-			MaxBackups: 1,
+			MaxBackups: 10,
 			MaxAge:     1, // days
 		},
 		cacheTime: time.Now(),
