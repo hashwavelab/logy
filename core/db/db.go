@@ -1,8 +1,8 @@
 package db
 
 var (
-	DBName           = "LOGY"
-	RecordsTableName = "RECORDS"
+	DBName           = "logy"
+	RecordsTableName = "records"
 )
 
 type DBClient interface {
