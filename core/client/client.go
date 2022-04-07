@@ -89,6 +89,7 @@ func NewClient(compName string) *Client {
 	return c
 }
 
+// Implement io.writer; copy & cache the input.
 func (c *Client) Write(d []byte) (n int, err error) {
 	length := len(d)
 	data := make([]byte, length)
@@ -104,7 +105,6 @@ func (c *Client) SendImmediate() {
 func (c *Client) DeafultZapLogger() *zap.Logger {
 	config := zap.NewProductionEncoderConfig()
 	config.EncodeTime = zapcore.EpochNanosTimeEncoder
-	//config.LineEnding = "" // remove line ending
 	core := zapcore.NewCore(
 		zapcore.NewJSONEncoder(config),
 		zapcore.AddSync(c),
@@ -113,15 +113,15 @@ func (c *Client) DeafultZapLogger() *zap.Logger {
 	return zap.New(core)
 }
 
-// send will send the cached logs to the main server. If fails, logs will be saved to local file.
+// send will send all cached logs to server. If fails, logs will be saved to local file.
 func (c *Client) send(submitType int32) {
 	if len(c.cache) == 0 {
 		return
 	}
 	sent := false
 	if c.stream == nil {
-		// Important: this force local log can taken 10X longer than using it directly with zap.
-		// Aviod local logging as much as possible.
+		// Important: this force local log can takn 10X longer than using it directly with zap.
+		// So aviod local logging as much as possible.
 		for _, log := range c.cache {
 			c.localLogger.Write(log)
 		}
