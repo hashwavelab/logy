@@ -74,14 +74,14 @@ func (c *MongoDBClient) DeleteOldLogs(ts int64) error {
 	}
 	for _, collName := range colls {
 		coll := c.client.Database(DBName).Collection(collName)
-		_, err := coll.DeleteMany(context.TODO(), bson.M{"ts": bson.M{
+		result, err := coll.DeleteMany(context.TODO(), bson.M{"ts": bson.M{
 			"$lte": ts,
 		}})
 		if err != nil {
 			log.Println("DeleteMany failed for", collName, err)
 			continue
 		}
-		log.Println("DeleteMany success, old logs deleted for", collName)
+		log.Println("DeleteMany success, old logs deleted for", collName, result.DeletedCount)
 	}
 	return nil
 }
