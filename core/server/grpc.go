@@ -57,7 +57,7 @@ func getIPFromAddress(addr string) (string, bool) {
 		if addr[i:i+1] == ":" {
 			res := addr[:i]
 			if res == "[::1]" || res == "127.0.0.1" || res == "localhost" {
-				res = "LOCAL"
+				res = "local"
 			}
 			return res, true
 		}

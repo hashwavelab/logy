@@ -7,6 +7,7 @@ import (
 )
 
 func main() {
+	//server.MaxAgeOfLogsInNanoSeconds = (6 * time.Hour).Nanoseconds()
 	logyServer := server.NewServer().UseMongo()
 	err := logyServer.PingDB()
 	if err != nil {

@@ -1,11 +1,14 @@
 package server
 
 import (
+	"time"
+
 	"github.com/hashwavelab/logy/core/db"
 )
 
 var (
-	LNName = "LN"
+	MaxAgeOfLogsCheckInterval = 1 * time.Hour
+	MaxAgeOfLogsInNanoSeconds = (5 * 24 * time.Hour).Nanoseconds()
 )
 
 type Server struct {
@@ -13,7 +16,16 @@ type Server struct {
 }
 
 func NewServer() *Server {
-	return &Server{}
+	s := &Server{}
+
+	go func() {
+		s.deleteOldLogs()
+		for range time.NewTicker(MaxAgeOfLogsCheckInterval).C {
+			s.deleteOldLogs()
+		}
+	}()
+
+	return s
 }
 
 func (s *Server) UseMongo() *Server {
@@ -31,4 +43,8 @@ func (s *Server) saveLogsToDB(collection string, rawLogs [][]byte, submitType in
 		return s.dbClient.SaveSubmissionRecord(collection, submitType, false, err.Error(), len(rawLogs))
 	}
 	return s.dbClient.SaveSubmissionRecord(collection, submitType, true, "", len(rawLogs))
+}
+
+func (s *Server) deleteOldLogs() {
+	s.dbClient.DeleteOldLogs(time.Now().UnixNano() - MaxAgeOfLogsInNanoSeconds)
 }

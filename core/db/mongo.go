@@ -38,7 +38,7 @@ func GetMongoClient() DBClient {
 }
 
 func (c *MongoDBClient) Ping() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancel := context.WithTimeout(context.TODO(), 1*time.Second)
 	defer cancel()
 	return c.client.Ping(ctx, nil)
 }
@@ -62,6 +62,27 @@ func (c *MongoDBClient) SaveLogs(collection string, rawLogs [][]byte) error {
 		return err
 	}
 	log.Println("InsertMany success, inserted", len(result.InsertedIDs), "time taken:", time.Since(start))
+	return nil
+}
+
+// DeleteOldLogs checks all collections and delete logs older than ts.
+func (c *MongoDBClient) DeleteOldLogs(ts int64) error {
+	colls, err := c.client.Database(DBName).ListCollectionNames(context.TODO(), bson.D{})
+	if err != nil {
+		log.Println("Mongo failed to list all collections")
+		return err
+	}
+	for _, collName := range colls {
+		coll := c.client.Database(DBName).Collection(collName)
+		_, err := coll.DeleteMany(context.TODO(), bson.M{"ts": bson.M{
+			"$lte": ts,
+		}})
+		if err != nil {
+			log.Println("DeleteMany failed for", collName, err)
+			continue
+		}
+		log.Println("DeleteMany success, old logs deleted for", collName)
+	}
 	return nil
 }
 
