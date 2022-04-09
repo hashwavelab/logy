@@ -19,6 +19,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type LogyClient interface {
 	SubmitLogs(ctx context.Context, opts ...grpc.CallOption) (Logy_SubmitLogsClient, error)
+	SubmitLogsWithoutStream(ctx context.Context, in *Logs, opts ...grpc.CallOption) (*EmptyResponse, error)
 }
 
 type logyClient struct {
@@ -63,11 +64,21 @@ func (x *logySubmitLogsClient) CloseAndRecv() (*EmptyResponse, error) {
 	return m, nil
 }
 
+func (c *logyClient) SubmitLogsWithoutStream(ctx context.Context, in *Logs, opts ...grpc.CallOption) (*EmptyResponse, error) {
+	out := new(EmptyResponse)
+	err := c.cc.Invoke(ctx, "/logy.Logy/SubmitLogsWithoutStream", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // LogyServer is the server API for Logy service.
 // All implementations must embed UnimplementedLogyServer
 // for forward compatibility
 type LogyServer interface {
 	SubmitLogs(Logy_SubmitLogsServer) error
+	SubmitLogsWithoutStream(context.Context, *Logs) (*EmptyResponse, error)
 	mustEmbedUnimplementedLogyServer()
 }
 
@@ -77,6 +88,9 @@ type UnimplementedLogyServer struct {
 
 func (UnimplementedLogyServer) SubmitLogs(Logy_SubmitLogsServer) error {
 	return status.Errorf(codes.Unimplemented, "method SubmitLogs not implemented")
+}
+func (UnimplementedLogyServer) SubmitLogsWithoutStream(context.Context, *Logs) (*EmptyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SubmitLogsWithoutStream not implemented")
 }
 func (UnimplementedLogyServer) mustEmbedUnimplementedLogyServer() {}
 
@@ -117,13 +131,36 @@ func (x *logySubmitLogsServer) Recv() (*Logs, error) {
 	return m, nil
 }
 
+func _Logy_SubmitLogsWithoutStream_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Logs)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LogyServer).SubmitLogsWithoutStream(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/logy.Logy/SubmitLogsWithoutStream",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LogyServer).SubmitLogsWithoutStream(ctx, req.(*Logs))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Logy_ServiceDesc is the grpc.ServiceDesc for Logy service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Logy_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "logy.Logy",
 	HandlerType: (*LogyServer)(nil),
-	Methods:     []grpc.MethodDesc{},
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "SubmitLogsWithoutStream",
+			Handler:    _Logy_SubmitLogsWithoutStream_Handler,
+		},
+	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "SubmitLogs",

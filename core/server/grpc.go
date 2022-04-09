@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"io"
 	"log"
@@ -34,6 +35,19 @@ func (s *GRPCServer) SubmitLogs(stream pb.Logy_SubmitLogsServer) error {
 		}
 		s.server.saveLogsToDB(logs.App+"_"+logs.Component+"_"+logs.Instance+"_"+ip, logs.Logs, logs.SubmitType)
 	}
+}
+
+func (s *GRPCServer) SubmitLogsWithoutStream(ctx context.Context, logs *pb.Logs) (*pb.EmptyResponse, error) {
+	p, _ := peer.FromContext(ctx)
+	ip, ok := getIPFromAddress(p.Addr.String())
+	if !ok {
+		return nil, errors.New("cannot get ip")
+	}
+	err := s.server.saveLogsToDB(logs.App+"_"+logs.Component+"_"+logs.Instance+"_"+ip, logs.Logs, logs.SubmitType)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.EmptyResponse{}, nil
 }
 
 func InitGRPCServer(server *Server, port string) {

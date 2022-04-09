@@ -8,6 +8,7 @@ package logy;
 
 service Logy {
     rpc SubmitLogs (stream Logs) returns (EmptyResponse) {}
+    rpc SubmitLogsWithoutStream (Logs) returns (EmptyResponse) {}
 }
 
 message Logs {
