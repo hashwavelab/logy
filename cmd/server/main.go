@@ -15,5 +15,6 @@ func main() {
 	}
 	log.Println("connected to DB")
 	server.InitGRPCServer(logyServer, ":8878")
+	server.InitWebService(logyServer)
 	select {}
 }

@@ -19,6 +19,7 @@ func NewServer() *Server {
 	s := &Server{}
 
 	go func() {
+		time.Sleep(3 * time.Second)
 		s.deleteOldLogs()
 		for range time.NewTicker(MaxAgeOfLogsCheckInterval).C {
 			s.deleteOldLogs()
