@@ -13,6 +13,8 @@ import (
 var (
 	MongoURI          string        = "mongodb://127.0.0.1:27017"
 	ConnectionTimeout time.Duration = 2 * time.Second
+	MongoQueryTimeout time.Duration = 30 * time.Second
+	EmptyFilter                     = &bson.M{}
 )
 
 type MongoDBClient struct {
@@ -20,7 +22,7 @@ type MongoDBClient struct {
 	disconnect func()
 }
 
-func GetMongoClient() DBClient {
+func GetMongoClient() *MongoDBClient {
 	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(MongoURI))
 	if err != nil || client == nil {
 		log.Fatal("mongo get client error", err)
@@ -41,6 +43,19 @@ func (c *MongoDBClient) Ping() error {
 	ctx, cancel := context.WithTimeout(context.TODO(), 1*time.Second)
 	defer cancel()
 	return c.client.Ping(ctx, nil)
+}
+
+func (c *MongoDBClient) GetLogs(collection string, filter interface{}, opts ...*options.FindOptions) ([]bson.M, error) {
+	coll := c.client.Database(DBName).Collection(collection)
+	var docs []bson.M
+	ctx, cancel := context.WithTimeout(context.Background(), MongoQueryTimeout)
+	defer cancel()
+	r, err := coll.Find(ctx, filter, opts...)
+	if err != nil {
+		return nil, err
+	}
+	r.All(context.TODO(), &docs)
+	return docs, nil
 }
 
 func (c *MongoDBClient) SaveLogs(collection string, rawLogs [][]byte) error {
