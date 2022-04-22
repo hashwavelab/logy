@@ -58,6 +58,15 @@ func (c *MongoDBClient) GetLogs(collection string, filter interface{}, opts ...*
 	return docs, nil
 }
 
+func (c *MongoDBClient) GetAllCollectionNames() ([]string, error) {
+	colls, err := c.client.Database(DBName).ListCollectionNames(context.TODO(), EmptyFilter)
+	if err != nil {
+		log.Println("Mongo failed to list all collections")
+		return nil, err
+	}
+	return colls, nil
+}
+
 func (c *MongoDBClient) SaveLogs(collection string, rawLogs [][]byte) error {
 	coll := c.client.Database(DBName).Collection(collection)
 	docs := make([]interface{}, len(rawLogs))
@@ -82,7 +91,7 @@ func (c *MongoDBClient) SaveLogs(collection string, rawLogs [][]byte) error {
 
 // DeleteOldLogs checks all collections and delete logs older than ts.
 func (c *MongoDBClient) DeleteOldLogs(ts int64) error {
-	colls, err := c.client.Database(DBName).ListCollectionNames(context.TODO(), bson.D{})
+	colls, err := c.client.Database(DBName).ListCollectionNames(context.TODO(), EmptyFilter)
 	if err != nil {
 		log.Println("Mongo failed to list all collections")
 		return err
