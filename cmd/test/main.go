@@ -10,7 +10,7 @@ import (
 
 func main() {
 	client.AppName = "testapp"
-	client.InstanceName = "i0"
+	client.InstanceName = "i1"
 	client.ServerAddress = "localhost:8878"
 	client.BundleSize = 50
 	c := client.NewClient("testcomp")
