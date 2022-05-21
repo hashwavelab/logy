@@ -16,7 +16,6 @@ var (
 	ConnectionTimeout time.Duration = 2 * time.Second
 	MongoQueryTimeout time.Duration = 30 * time.Second
 	EmptyFilter                     = &bson.M{}
-	CappedCollSize    int64         = 512 * 1024 * 1024
 )
 
 type MongoDBClient struct {
@@ -75,13 +74,42 @@ func (c *MongoDBClient) getCollection(collection string) *mongo.Collection {
 	if !c.hasCollection(collection) {
 		ctx, cancel := context.WithTimeout(context.Background(), MongoQueryTimeout)
 		defer cancel()
-		err := c.client.Database(DBName).CreateCollection(ctx, collection, options.CreateCollection().SetCapped(true).SetSizeInBytes(CappedCollSize))
+		err := c.client.Database(DBName).CreateCollection(ctx, collection)
 		if err != nil {
 			c.addCollection(collection)
 		}
-		log.Println("new capped collection created:", collection, err)
+		coll := c.client.Database(DBName).Collection(collection)
+		mod := mongo.IndexModel{
+			Keys: bson.M{
+				"ts": -1,
+			}, Options: nil,
+		}
+		ctx1, cancel1 := context.WithTimeout(context.Background(), MongoQueryTimeout)
+		defer cancel1()
+		index, err1 := coll.Indexes().CreateOne(ctx1, mod)
+		log.Println("new collection created:", collection, err, index, err1)
 	}
 	return c.client.Database(DBName).Collection(collection)
+}
+
+func (c *MongoDBClient) DeleteOldLogs(ts int64) error {
+	colls, err := c.client.Database(DBName).ListCollectionNames(context.TODO(), EmptyFilter)
+	if err != nil {
+		log.Println("Mongo failed to list all collections")
+		return err
+	}
+	for _, collName := range colls {
+		coll := c.client.Database(DBName).Collection(collName)
+		result, err := coll.DeleteMany(context.TODO(), bson.M{"ts": bson.M{
+			"$lte": ts,
+		}})
+		if err != nil {
+			log.Println("DeleteMany failed for", collName, err)
+			continue
+		}
+		log.Println("DeleteMany success, old logs deleted for", collName, result.DeletedCount)
+	}
+	return nil
 }
 
 func (c *MongoDBClient) GetLogs(collection string, filter interface{}, opts ...*options.FindOptions) ([]bson.M, error) {

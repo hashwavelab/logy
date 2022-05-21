@@ -8,7 +8,7 @@ import (
 
 var (
 	MaxAgeOfLogsCheckInterval = 1 * time.Hour
-	MaxAgeOfLogsInNanoSeconds = (5 * 24 * time.Hour).Nanoseconds()
+	MaxAgeOfLogsInNanoSeconds = (2 * 24 * time.Hour).Nanoseconds()
 )
 
 type Server struct {
@@ -17,6 +17,15 @@ type Server struct {
 
 func NewServer() *Server {
 	s := &Server{}
+
+	go func() {
+		time.Sleep(3 * time.Second)
+		s.deleteOldLogs()
+		for range time.NewTicker(MaxAgeOfLogsCheckInterval).C {
+			s.deleteOldLogs()
+		}
+	}()
+
 	return s
 }
 
@@ -35,4 +44,8 @@ func (s *Server) saveLogsToDB(collection string, rawLogs [][]byte, submitType in
 		return s.dbClient.SaveSubmissionRecord(collection, submitType, false, err.Error(), len(rawLogs))
 	}
 	return s.dbClient.SaveSubmissionRecord(collection, submitType, true, "", len(rawLogs))
+}
+
+func (s *Server) deleteOldLogs() {
+	s.dbClient.DeleteOldLogs(time.Now().UnixNano() - MaxAgeOfLogsInNanoSeconds)
 }
