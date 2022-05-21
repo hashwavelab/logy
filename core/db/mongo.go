@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"log"
+	"sync"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -15,10 +16,13 @@ var (
 	ConnectionTimeout time.Duration = 2 * time.Second
 	MongoQueryTimeout time.Duration = 30 * time.Second
 	EmptyFilter                     = &bson.M{}
+	CappedCollSize    int64         = 512 * 1024 * 1024
 )
 
 type MongoDBClient struct {
+	sync.RWMutex
 	client     *mongo.Client
+	colls      map[string]bool
 	disconnect func()
 }
 
@@ -28,8 +32,9 @@ func GetMongoClient() *MongoDBClient {
 		log.Fatal("mongo get client error", err)
 		return nil
 	}
-	return &MongoDBClient{
+	c := &MongoDBClient{
 		client: client,
+		colls:  make(map[string]bool),
 		disconnect: func() {
 			err := client.Disconnect(context.TODO())
 			if err != nil {
@@ -37,6 +42,27 @@ func GetMongoClient() *MongoDBClient {
 			}
 		},
 	}
+	colls, err := c.GetAllCollectionNames()
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, collName := range colls {
+		c.addCollection(collName)
+	}
+	return c
+}
+
+func (c *MongoDBClient) addCollection(cn string) {
+	c.Lock()
+	defer c.Unlock()
+	c.colls[cn] = true
+}
+
+func (c *MongoDBClient) hasCollection(cn string) bool {
+	c.RLock()
+	defer c.RUnlock()
+	_, has := c.colls[cn]
+	return has
 }
 
 func (c *MongoDBClient) Ping() error {
@@ -45,8 +71,21 @@ func (c *MongoDBClient) Ping() error {
 	return c.client.Ping(ctx, nil)
 }
 
+func (c *MongoDBClient) getCollection(collection string) *mongo.Collection {
+	if !c.hasCollection(collection) {
+		ctx, cancel := context.WithTimeout(context.Background(), MongoQueryTimeout)
+		defer cancel()
+		err := c.client.Database(DBName).CreateCollection(ctx, collection, options.CreateCollection().SetCapped(true).SetSizeInBytes(CappedCollSize))
+		if err != nil {
+			c.addCollection(collection)
+		}
+		log.Println("new capped collection created:", collection, err)
+	}
+	return c.client.Database(DBName).Collection(collection)
+}
+
 func (c *MongoDBClient) GetLogs(collection string, filter interface{}, opts ...*options.FindOptions) ([]bson.M, error) {
-	coll := c.client.Database(DBName).Collection(collection)
+	coll := c.getCollection(collection)
 	var docs []bson.M
 	ctx, cancel := context.WithTimeout(context.Background(), MongoQueryTimeout)
 	defer cancel()
@@ -68,7 +107,7 @@ func (c *MongoDBClient) GetAllCollectionNames() ([]string, error) {
 }
 
 func (c *MongoDBClient) SaveLogs(collection string, rawLogs [][]byte) error {
-	coll := c.client.Database(DBName).Collection(collection)
+	coll := c.getCollection(collection)
 	docs := make([]interface{}, len(rawLogs))
 	for i := 0; i < len(rawLogs); i++ {
 		var bdoc interface{}
@@ -86,27 +125,6 @@ func (c *MongoDBClient) SaveLogs(collection string, rawLogs [][]byte) error {
 		return err
 	}
 	log.Println("InsertMany success, inserted", len(result.InsertedIDs), "time taken:", time.Since(start))
-	return nil
-}
-
-// DeleteOldLogs checks all collections and delete logs older than ts.
-func (c *MongoDBClient) DeleteOldLogs(ts int64) error {
-	colls, err := c.client.Database(DBName).ListCollectionNames(context.TODO(), EmptyFilter)
-	if err != nil {
-		log.Println("Mongo failed to list all collections")
-		return err
-	}
-	for _, collName := range colls {
-		coll := c.client.Database(DBName).Collection(collName)
-		result, err := coll.DeleteMany(context.TODO(), bson.M{"ts": bson.M{
-			"$lte": ts,
-		}})
-		if err != nil {
-			log.Println("DeleteMany failed for", collName, err)
-			continue
-		}
-		log.Println("DeleteMany success, old logs deleted for", collName, result.DeletedCount)
-	}
 	return nil
 }
 
