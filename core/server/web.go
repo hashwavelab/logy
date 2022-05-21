@@ -8,6 +8,8 @@ import (
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 	"github.com/hashwavelab/logy/core/db"
+	"github.com/hashwavelab/logy/core/tracer"
+
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -17,6 +19,7 @@ func InitWebService(server *Server) {
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
 	r.GET("/list", server.GetAllCollectionNames)
 	r.GET("/logs", server.GetLogs)
+	r.GET("/trace", server.TraceLogs)
 	r.Run("localhost:5004") // listen and serve on 5004
 }
 
@@ -74,4 +77,14 @@ func (s *Server) GetLogs(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, logs)
+}
+
+func (s *Server) TraceLogs(c *gin.Context) {
+	c.Writer.Header().Set("Content-Type", "text/html; charset=utf-8")
+	c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+	msg := c.Query("msg")
+	log.Println(msg)
+	tracer := tracer.InitTracer(msg, s.dbClient.(*db.MongoDBClient))
+	res := tracer.OperateTracing()
+	c.JSON(http.StatusOK, res)
 }

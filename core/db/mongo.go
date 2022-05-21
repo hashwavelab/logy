@@ -25,8 +25,8 @@ type MongoDBClient struct {
 	disconnect func()
 }
 
-func GetMongoClient() *MongoDBClient {
-	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(MongoURI))
+func GetMongoClient(uri string) *MongoDBClient {
+	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(uri))
 	if err != nil || client == nil {
 		log.Fatal("mongo get client error", err)
 		return nil
@@ -70,15 +70,15 @@ func (c *MongoDBClient) Ping() error {
 	return c.client.Ping(ctx, nil)
 }
 
-func (c *MongoDBClient) getCollection(collection string) *mongo.Collection {
+func (c *MongoDBClient) getCollection(dbName, collection string) *mongo.Collection {
 	if !c.hasCollection(collection) {
 		ctx, cancel := context.WithTimeout(context.Background(), MongoQueryTimeout)
 		defer cancel()
-		err := c.client.Database(DBName).CreateCollection(ctx, collection)
+		err := c.client.Database(dbName).CreateCollection(ctx, collection)
 		if err != nil {
 			c.addCollection(collection)
 		}
-		coll := c.client.Database(DBName).Collection(collection)
+		coll := c.client.Database(dbName).Collection(collection)
 		mod := mongo.IndexModel{
 			Keys: bson.M{
 				"ts": -1,
@@ -89,7 +89,7 @@ func (c *MongoDBClient) getCollection(collection string) *mongo.Collection {
 		index, err1 := coll.Indexes().CreateOne(ctx1, mod)
 		log.Println("new collection created:", collection, err, index, err1)
 	}
-	return c.client.Database(DBName).Collection(collection)
+	return c.client.Database(dbName).Collection(collection)
 }
 
 func (c *MongoDBClient) DeleteOldLogs(ts int64) error {
@@ -113,7 +113,7 @@ func (c *MongoDBClient) DeleteOldLogs(ts int64) error {
 }
 
 func (c *MongoDBClient) GetLogs(collection string, filter interface{}, opts ...*options.FindOptions) ([]bson.M, error) {
-	coll := c.getCollection(collection)
+	coll := c.getCollection(DBName, collection)
 	var docs []bson.M
 	ctx, cancel := context.WithTimeout(context.Background(), MongoQueryTimeout)
 	defer cancel()
@@ -135,7 +135,7 @@ func (c *MongoDBClient) GetAllCollectionNames() ([]string, error) {
 }
 
 func (c *MongoDBClient) SaveLogs(collection string, rawLogs [][]byte) error {
-	coll := c.getCollection(collection)
+	coll := c.getCollection(DBName, collection)
 	docs := make([]interface{}, len(rawLogs))
 	for i := 0; i < len(rawLogs); i++ {
 		var bdoc interface{}
@@ -176,6 +176,18 @@ func (c *MongoDBClient) SaveSubmissionRecord(collName string, submitType int32, 
 		Count:      count,
 	}
 	_, err := coll.InsertOne(context.TODO(), record)
+	if err != nil {
+		log.Println("InsertMany failed", err)
+		return err
+	}
+	return nil
+}
+
+func (c *MongoDBClient) SaveDocs(dbName, collName string, docs []interface{}) error {
+	coll := c.getCollection(dbName, collName)
+	ctx, cancel := context.WithTimeout(context.Background(), MongoQueryTimeout)
+	defer cancel()
+	_, err := coll.InsertMany(ctx, docs)
 	if err != nil {
 		log.Println("InsertMany failed", err)
 		return err

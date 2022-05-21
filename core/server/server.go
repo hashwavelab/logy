@@ -30,7 +30,7 @@ func NewServer() *Server {
 }
 
 func (s *Server) UseMongo() *Server {
-	s.dbClient = db.GetMongoClient()
+	s.dbClient = db.GetMongoClient(db.MongoURI)
 	return s
 }
 
