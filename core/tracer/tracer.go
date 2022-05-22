@@ -123,6 +123,7 @@ func (t *Tracer) ExecuteTracing() []interface{} {
 			continue
 		}
 	}
+	log.Println("Step2 Finished")
 	// Step 3:
 	// loop data from all domains to find out logs with same tracingMatch and save into the tracedDBMap
 	for domainName, domain := range t.originDBMap {
@@ -141,7 +142,7 @@ func (t *Tracer) ExecuteTracing() []interface{} {
 			}
 		}
 	}
-	log.Println("Step2 Finished")
+	log.Println("Step3 Finished")
 	// Step 4:
 	// sort logs in each tracedDBMap by timestamp and export
 	uts := make([]interface{}, len(t.tracedDBMap))
@@ -166,7 +167,7 @@ func (t *Tracer) ExecuteTracing() []interface{} {
 		uts[i] = ut
 		i++
 	}
-	log.Println("Step3 Finished")
+	log.Println("Step4 Finished")
 	return uts
 }
 

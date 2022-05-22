@@ -194,3 +194,15 @@ func (c *MongoDBClient) SaveDocs(dbName, collName string, docs []interface{}) er
 	}
 	return nil
 }
+
+func (c *MongoDBClient) DeleteDocs(dbName, collName string, filter interface{}) error {
+	coll := c.getCollection(dbName, collName)
+	ctx, cancel := context.WithTimeout(context.Background(), MongoQueryTimeout)
+	defer cancel()
+	result, err := coll.DeleteMany(ctx, filter)
+	if err != nil {
+		log.Println("delete docs failed", collName, err)
+	}
+	log.Println("DeleteMany success, old logs deleted for", collName, result.DeletedCount)
+	return err
+}

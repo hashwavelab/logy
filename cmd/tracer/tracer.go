@@ -6,32 +6,40 @@ import (
 	"os"
 	"time"
 
+	"github.com/go-co-op/gocron"
 	"github.com/hashwavelab/logy/core/db"
+	"github.com/hashwavelab/logy/core/server"
 	"github.com/hashwavelab/logy/core/tracer"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
-func main() {
-	// s := gocron.NewScheduler(time.UTC)
-	// s.Cron("*/10 * * * *").Do(func() {
-	// 	endWithTolerences := time.Now().UnixNano()
-	// 	end := endWithTolerences - 3*60*1000*1000*1000
-	// 	start := end - 10*60*1000*1000*1000
-	// 	msg := `{"templateName":"recipeTracing","initDomain":"rpd_main_i0_172.31.44.215","initMatch":{"msg":"evm recipe"},"tracingMatch":"utid","domains":["swirl_ripple_celo_150.109.148.233","swirl_ripple_cronos_150.109.148.233","swirl_ripple_polygon_3.83.159.18","swirl_seal_i0_172.31.44.215","swirl_ripple_gnosis_34.217.50.229","swirl_ripple_avalanchec_150.109.148.233","swirl_ripple_bsc_34.217.50.229","rpd_main_i0_172.31.44.215","swirl_ripple_harmony_3.83.159.18","swirl_ripple_aurora_150.109.148.233","swirl_ripple_moonbeam_150.109.148.233","swirl_ripple_fantom_34.217.50.229","swirl_ripple_emerald_150.109.148.233"],"tsRangeInit":{"ts":{"$gte":` + strconv.FormatInt(start, 10) + `,"$lte":` + strconv.FormatInt(end, 10) + `}},"tsRangeTolerant":{"ts":{"$gte":` + strconv.FormatInt(start, 10) + `,"$lte":` + strconv.FormatInt(endWithTolerences, 10) + `}}`
-	// 	tracer := tracer.InitTracer(msg, db.GetMongoClient(db.DBName))
-	// 	res := tracer.OperateTracing()
-	// 	atlas := db.GetMongoClient(db.GetDotEnvVariable("MONGO_ATLAS_URI"))
-	// 	atlas.SaveDocs("logy", "utid_trace", res)
-	// })
-	localMongoCli := db.GetMongoClient(db.MongoURI)
-	remoteMongoClient := db.GetMongoClient(db.GetDotEnvVariable("MONGO_ATLAS_URI"))
-	jsonBytes := getJsonBytes("./tracing_recipes/utid_trace.json")
+var (
+	LocalMongoCli  *db.MongoDBClient
+	RemoteMongoCli *db.MongoDBClient
+)
 
-	endWithTolerance := time.Now().UnixNano()
-	end := endWithTolerance - 3*60*1000*1000*1000
-	start := end - 10*60*1000*1000*1000
-	tracer := tracer.InitTracer(jsonBytes, localMongoCli, start, end, endWithTolerance)
-	res := tracer.ExecuteTracing()
-	remoteMongoClient.SaveDocs("logy", "utid_trace", res)
+func init() {
+	LocalMongoCli = db.GetMongoClient(db.MongoURI)
+	RemoteMongoCli = db.GetMongoClient(db.GetDotEnvVariable("MONGO_ATLAS_URI"))
+}
+
+func main() {
+	go initTraceTask(getJsonBytes("./tracing_recipes/utid_trace.json"))
+	select {}
+}
+
+func initTraceTask(jsonBytes []byte) {
+	s := gocron.NewScheduler(time.UTC)
+	s.Cron("*/10 * * * *").Do(func() {
+		now := time.Now().UnixNano()
+		endWithTolerance := now
+		end := endWithTolerance - 3*60*1000*1000*1000
+		start := end - 10*60*1000*1000*1000
+		tracer := tracer.InitTracer(jsonBytes, LocalMongoCli, start, end, endWithTolerance)
+		res := tracer.ExecuteTracing()
+		RemoteMongoCli.SaveDocs("logy", "utid_trace", res)
+		RemoteMongoCli.DeleteDocs("logy", "utid_trace", bson.M{"ts": bson.M{"$lte": now - server.MaxAgeOfLogsInNanoSeconds}})
+	})
 }
 
 func getJsonBytes(path string) []byte {
