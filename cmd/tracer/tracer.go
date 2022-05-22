@@ -6,10 +6,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/go-co-op/gocron"
 	"github.com/hashwavelab/logy/core/db"
 	"github.com/hashwavelab/logy/core/server"
 	"github.com/hashwavelab/logy/core/tracer"
+	"github.com/robfig/cron/v3"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -24,22 +24,24 @@ func init() {
 }
 
 func main() {
-	go initTraceTask(getJsonBytes("./tracing_recipes/utid_trace.json"))
+	c := cron.New()
+	task0JSONByte := getJsonBytes("./tracing_recipes/utid_trace.json")
+	c.AddFunc("@every 10m", func() { traceTask(task0JSONByte) })
+	c.Start()
 	select {}
 }
 
-func initTraceTask(jsonBytes []byte) {
-	s := gocron.NewScheduler(time.UTC)
-	s.Cron("*/10 * * * *").Do(func() {
-		now := time.Now().UnixNano()
-		endWithTolerance := now
-		end := endWithTolerance - 3*60*1000*1000*1000
-		start := end - 10*60*1000*1000*1000
-		tracer := tracer.InitTracer(jsonBytes, LocalMongoCli, start, end, endWithTolerance)
-		res := tracer.ExecuteTracing()
-		RemoteMongoCli.SaveDocs("logy", "utid_trace", res)
-		RemoteMongoCli.DeleteDocs("logy", "utid_trace", bson.M{"ts": bson.M{"$lte": now - server.MaxAgeOfLogsInNanoSeconds}})
-	})
+func traceTask(jsonBytes []byte) {
+	log.Println("tracing...")
+	now := time.Now().UnixNano()
+	endWithTolerance := now
+	end := endWithTolerance - 3*60*1000*1000*1000
+	start := end - 10*60*1000*1000*1000
+	tracer := tracer.InitTracer(jsonBytes, LocalMongoCli, start, end, endWithTolerance)
+	res := tracer.ExecuteTracing()
+	RemoteMongoCli.SaveDocs("logy", "utid_trace", res)
+	RemoteMongoCli.DeleteDocs("logy", "utid_trace", bson.M{"ts": bson.M{"$lte": now - server.MaxAgeOfLogsInNanoSeconds}})
+	log.Println("tracing done")
 }
 
 func getJsonBytes(path string) []byte {
