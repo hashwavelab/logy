@@ -4,7 +4,9 @@ import (
 	"log"
 	"sort"
 	"sync"
+	"time"
 
+	"github.com/go-co-op/gocron"
 	"github.com/hashwavelab/logy/core/db"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -23,6 +25,7 @@ type Tracer struct {
 }
 
 type UtidTrace struct {
+	Timestamp         int64  `bson:"timestamp" json:"timestamp"`
 	Utid              string `bson:"utid" json:"utid"`
 	AssetFrom         string `bson:"assetFrom" json:"assetFrom"`
 	AssetTo           string `bson:"assetTo" json:"assetTo"`
@@ -34,17 +37,15 @@ type UtidTrace struct {
 }
 
 // e.g. "{"templateName":"recipeTracing","initDomain":"rpd_main_i0_172.31.44.215","initMatch":{"msg":"evm recipe"},"tracingMatch":"utid","domains":["swirl_seal_i0_172.31.44.215","swirl_ripple_aurora_150.109.148.233"],"tsRange":{"ts":"18:00-19:00"}}"
-func InitTracer(initJSONString string, dbClient *db.MongoDBClient) *Tracer {
+func InitTracer(initJSONbytes []byte, dbClient *db.MongoDBClient, start, end, endWithTolerance int64) *Tracer {
 	t := &Tracer{
 		dbClient:    dbClient,
 		originDBMap: make(map[string][]bson.M),
 		tracedDBMap: make(map[string][]bson.M),
 	}
-	// decode json String to bson.M
+	// decode initJSONbytes to bson.M
 	info := bson.M{}
-	if initJSONString != "" {
-		bson.UnmarshalExtJSON([]byte(initJSONString), true, info)
-	}
+	bson.UnmarshalExtJSON(initJSONbytes, true, info)
 	// construct the tracer
 	for key, value := range info {
 		switch key {
@@ -54,9 +55,15 @@ func InitTracer(initJSONString string, dbClient *db.MongoDBClient) *Tracer {
 		case "initMatch":
 			t.initMatch = value.(bson.M)
 		case "tsRangeInit":
-			t.tsRangeInit = value.(bson.M)
+			tsRangeInit := value.(bson.M)
+			tsRangeInit["ts"].(bson.M)["$gte"] = start
+			tsRangeInit["ts"].(bson.M)["$lte"] = end
+			t.tsRangeInit = tsRangeInit
 		case "tsRangeTolerant":
-			t.tsRangeTolerant = value.(bson.M)
+			tsRangeTolerant := value.(bson.M)
+			tsRangeTolerant["ts"].(bson.M)["$gte"] = start
+			tsRangeTolerant["ts"].(bson.M)["$lte"] = endWithTolerance
+			t.tsRangeTolerant = tsRangeTolerant
 		case "tracingMatch":
 			t.tracingMatch = value.(string)
 		case "domains":
@@ -68,7 +75,7 @@ func InitTracer(initJSONString string, dbClient *db.MongoDBClient) *Tracer {
 	return t
 }
 
-func (t *Tracer) OperateTracing() []interface{} {
+func (t *Tracer) ExecuteTracing() []interface{} {
 	var initMatch bson.M = t.initMatch
 	var tracingMatch string = t.tracingMatch
 	// Step 1:
@@ -146,6 +153,7 @@ func (t *Tracer) OperateTracing() []interface{} {
 		// fmt.Println(key)
 		// fmt.Println(domain)
 		ut := UtidTrace{
+			Timestamp:         domain[0]["ts"].(int64),
 			Utid:              key,
 			AssetFrom:         domain[0]["assetFrom"].(string),
 			AssetTo:           domain[0]["assetTo"].(string),
@@ -176,5 +184,8 @@ func (t *Tracer) step1(key string, wg *sync.WaitGroup) {
 }
 
 func (t *Tracer) StartTracingPeriodically(timeInterval uint64) {
+	s := gocron.NewScheduler(time.UTC)
+	s.Cron("*/10 * * * *").Do(func() {
 
+	})
 }
