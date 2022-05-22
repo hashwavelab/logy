@@ -26,7 +26,7 @@ func init() {
 func main() {
 	c := cron.New()
 	task0JSONByte := getJsonBytes("./tracing_recipes/utid_trace.json")
-	c.AddFunc("@every 10m", func() { traceTask(task0JSONByte) })
+	c.AddFunc("3-53/10 * * * *", func() { traceTask(task0JSONByte) })
 	c.Start()
 	select {}
 }
