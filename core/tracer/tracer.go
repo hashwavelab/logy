@@ -154,7 +154,7 @@ func (t *Tracer) ExecuteTracing() []interface{} {
 		// fmt.Println(key)
 		// fmt.Println(domain)
 		ut := UtidTrace{
-			Timestamp:         time.UnixMilli(domain[0]["ts"].(int64) / 1000).UTC(),
+			Timestamp:         time.UnixMicro(domain[0]["ts"].(int64) / 1000).UTC(),
 			Utid:              key,
 			AssetFrom:         domain[0]["assetFrom"].(string),
 			AssetTo:           domain[0]["assetTo"].(string),
