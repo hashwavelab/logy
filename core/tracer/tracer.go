@@ -25,15 +25,15 @@ type Tracer struct {
 }
 
 type UtidTrace struct {
-	Timestamp         int64  `bson:"timestamp" json:"timestamp"`
-	Utid              string `bson:"utid" json:"utid"`
-	AssetFrom         string `bson:"assetFrom" json:"assetFrom"`
-	AssetTo           string `bson:"assetTo" json:"assetTo"`
-	ChainName         string `bson:"chainName" json:"chainName"`
-	InitiatiedByChain bool   `bson:"initiatiedByChain" json:"initiatiedByChain"`
-	LastMsg           string `bson:"lastMsg" json:"lastMsg"`
-	Steps             int    `bson:"steps" json:"steps"`
-	TerminatedLevel   string `bson:"terminatedLevel" json:"terminatedLevel"`
+	Timestamp         time.Time `bson:"timestamp" json:"timestamp"`
+	Utid              string    `bson:"utid" json:"utid"`
+	AssetFrom         string    `bson:"assetFrom" json:"assetFrom"`
+	AssetTo           string    `bson:"assetTo" json:"assetTo"`
+	ChainName         string    `bson:"chainName" json:"chainName"`
+	InitiatiedByChain bool      `bson:"initiatiedByChain" json:"initiatiedByChain"`
+	LastMsg           string    `bson:"lastMsg" json:"lastMsg"`
+	Steps             int       `bson:"steps" json:"steps"`
+	TerminatedLevel   string    `bson:"terminatedLevel" json:"terminatedLevel"`
 }
 
 // e.g. "{"templateName":"recipeTracing","initDomain":"rpd_main_i0_172.31.44.215","initMatch":{"msg":"evm recipe"},"tracingMatch":"utid","domains":["swirl_seal_i0_172.31.44.215","swirl_ripple_aurora_150.109.148.233"],"tsRange":{"ts":"18:00-19:00"}}"
@@ -154,7 +154,7 @@ func (t *Tracer) ExecuteTracing() []interface{} {
 		// fmt.Println(key)
 		// fmt.Println(domain)
 		ut := UtidTrace{
-			Timestamp:         domain[0]["ts"].(int64),
+			Timestamp:         time.UnixMilli(domain[0]["ts"].(int64) / 1000).UTC(),
 			Utid:              key,
 			AssetFrom:         domain[0]["assetFrom"].(string),
 			AssetTo:           domain[0]["assetTo"].(string),
