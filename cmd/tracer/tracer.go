@@ -11,6 +11,7 @@ import (
 	"github.com/hashwavelab/logy/core/tracer"
 	"github.com/robfig/cron/v3"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 var (
@@ -40,7 +41,7 @@ func traceTask(jsonBytes []byte) {
 	tracer := tracer.InitTracer(jsonBytes, LocalMongoCli, start, end, endWithTolerance)
 	res := tracer.ExecuteTracing()
 	RemoteMongoCli.SaveDocs("logy", "utid_trace", res)
-	RemoteMongoCli.DeleteDocs("logy", "utid_trace", bson.M{"ts": bson.M{"$lte": now - server.MaxAgeOfLogsInNanoSeconds}})
+	RemoteMongoCli.DeleteDocs("logy", "utid_trace", bson.M{"ts": bson.M{"$lte": primitive.NewDateTimeFromTime(time.UnixMicro((now - server.MaxAgeOfLogsInNanoSeconds) / 1000).UTC())}})
 	log.Println("tracing done")
 }
 
