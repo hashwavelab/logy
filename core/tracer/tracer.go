@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/codehard-labs/logy/core/db"
 	"github.com/go-co-op/gocron"
-	"github.com/hashwavelab/logy/core/db"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )

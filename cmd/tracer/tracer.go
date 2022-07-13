@@ -6,9 +6,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/hashwavelab/logy/core/db"
-	"github.com/hashwavelab/logy/core/server"
-	"github.com/hashwavelab/logy/core/tracer"
+	"github.com/codehard-labs/logy/core/db"
+	"github.com/codehard-labs/logy/core/server"
+	"github.com/codehard-labs/logy/core/tracer"
 	"github.com/robfig/cron/v3"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"

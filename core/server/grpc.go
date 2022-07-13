@@ -7,7 +7,7 @@ import (
 	"log"
 	"net"
 
-	"github.com/hashwavelab/logy/pb"
+	"github.com/codehard-labs/logy/pb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/encoding"
 	"google.golang.org/grpc/encoding/gzip"

@@ -1,4 +1,4 @@
-module github.com/hashwavelab/logy
+module github.com/codehard-labs/logy
 
 go 1.17
 

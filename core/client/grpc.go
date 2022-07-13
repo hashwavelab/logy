@@ -4,7 +4,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/hashwavelab/logy/pb"
+	"github.com/codehard-labs/logy/pb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )

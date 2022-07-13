@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"github.com/hashwavelab/logy/core/server"
+	"github.com/codehard-labs/logy/core/server"
 )
 
 func main() {

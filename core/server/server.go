@@ -3,7 +3,7 @@ package server
 import (
 	"time"
 
-	"github.com/hashwavelab/logy/core/db"
+	"github.com/codehard-labs/logy/core/db"
 )
 
 var (
